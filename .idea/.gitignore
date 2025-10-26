@@ -6,3 +6,10 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
+.xlsx
+.json
+/misc.xml
+/modules.xml
+/OH_code_review.iml
+/inspectionProfiles/profiles_settings.xml
+/vcs.xml
