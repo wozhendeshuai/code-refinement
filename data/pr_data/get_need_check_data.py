@@ -1,6 +1,9 @@
 import json
 import os
 
+from utils.code_file_check import is_code_file
+from utils.diff_utils import get_diff_segments
+
 
 def get_all_keys_recursive(data, parent_key=''):
     """
@@ -70,62 +73,6 @@ def print_all_jsonl_keys(jsonl_file_path):
     print(f"keys 总数: {len(all_keys)}")
 
 
-# 判断文件是否是一个代码文件
-def is_code_file(file_path):
-    # 常见的代码文件扩展名
-    code_extensions = {
-        '.cpp', '.c', '.cc', '.h', '.hpp',
-        '.xml', '.ets', '.js', '.ts', '.mjs', '.rs', '.css', '.html',
-        '.py',
-        '.gn', '.gni',
-        '.rc', '.idl',
-        '.java',
-        '.go', '.rb', '.php', '.sql', '.swift',
-        '.kt', '.kts', '.scala', '.cs', '.cxx', '.hxx', '.m', '.mm'
-    }
-
-    # 常见的配置文件扩展名
-    config_extensions = {
-        '.conf', '.config', '.ini', '.properties', '.cfg', '.toml', '.env', '.yaml', '.yml'
-    }
-
-    # 常见的非代码文件扩展名（文档、资源、二进制等）
-    non_code_extensions = {
-        '.txt', '.log', '.md', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.svg', '.webp',
-        '.zip', '.tar', '.gz', '.rar', '.7z',
-        '.exe', '.dll', '.so', '.dylib', '.bin',
-        '.cer', '.crt', '.pem', '.key', '.p12', '.pfx',
-        '.gitignore', '.gitattributes', '.lock', '.sum',
-        '.license', '.LICENSE', '.notice', '.NOTICE'
-    }
-
-    # 获取文件扩展名
-    _, ext = os.path.splitext(file_path.lower())
-
-    # 移除扩展名中的点号（如果有）
-    ext = ext.lstrip('.')
-
-    # 特殊处理没有扩展名的文件
-    if not ext:
-        # 检查是否为特定的配置文件名（无扩展名）
-        return False
-
-    # 如果是明确的代码扩展名
-    if '.' + ext in code_extensions:
-        return True
-
-    # 如果是明确的配置扩展名
-    if '.' + ext in config_extensions:
-        return False
-
-    # 如果是明确的非代码扩展名
-    if '.' + ext in non_code_extensions:
-        return False
-
-    # 对于未知扩展名，默认认为不是代码文件
-    return False
-
 
 # 使用示例 - 替换为你实际的文件路径
 # 注意：根据原始代码，输出文件路径为 f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
@@ -175,7 +122,6 @@ def count_records_need_issue_detection(jsonl_file_path):
                 commit_count = data.get('commit_count', 0)
                 pr_file_len = len(data.get('pr_files', []))
                 pr_number = data.get('number')
-                pr_create_time = data.get('created_at')
 
                 # 从pr_commits中获取最晚的提交时间
                 pr_all_commits = data.get('pr_commits', [])
@@ -236,13 +182,10 @@ def count_records_need_issue_detection(jsonl_file_path):
                             both_ge_threshold += 1
                             print(
                                 f"第 {line_num} 行的 PR {pr_number} 满足条件 : diff_comment_num = {diff_comment_num}, user_comment_num = {user_comment_num}, commit_count = {commit_count} (两者都满足) pr_files_len={pr_file_len}")
-                        # else:
-                        # print(
-                        # f"第 {line_num} 行: diff_comment_num = {diff_comment_num}, commit_count = {commit_count} (仅diff_comment_num >= {diff_comment_threshold})")
+
                     elif is_commit_ge_threshold:
                         commit_count_ge_threshold += 1
-                        # print(
-                        #     f"第 {line_num} 行: diff_comment_num = {diff_comment_num}, commit_count = {commit_count} (仅commit_count >= {commit_count_threshold})")
+
 
                     total_lines += 1
 
@@ -262,56 +205,6 @@ def count_records_need_issue_detection(jsonl_file_path):
 
     return diff_comment_ge_threshold, commit_count_ge_threshold, both_ge_threshold
 
-def get_diff_segments(diff_text):
-    """
-    根据diff的具体内容，将其拆分成不同的段落，给出段落的起始和结束行号，包括old_start，old_end，new_start，new_end
-    """
-    if not diff_text:
-        return []
-    
-    segments = []
-    lines = diff_text.split('\n')
-    
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        # 查找 @@ -old_start,old_count +new_start,new_count @@ 格式的行
-        if line.startswith('@@'):
-            # 解析 hunk 头部信息
-            header_parts = line.split('@@')[1].strip()
-            parts = header_parts.split()
-            if len(parts)<2 or header_parts.startswith('-') is False:
-                i += 1
-                continue
-            old_part, new_part = header_parts.split()
-            
-            # 提取 old_start 和 old_count
-            old_info = old_part[1:].split(',')
-
-            old_start = int(old_info[0])
-            old_count = int(old_info[1]) if len(old_info) > 1 else 1
-            
-            # 提取 new_start 和 new_count
-            new_info = new_part[1:].split(',')
-            new_start = int(new_info[0])
-            new_count = int(new_info[1]) if len(new_info) > 1 else 1
-            
-            # 计算结束行号
-            old_end = old_start + old_count - 1 if old_count > 0 else old_start
-            new_end = new_start + new_count - 1 if new_count > 0 else new_start
-            
-            # 添加段落信息
-            segments.append({
-                'old_start': old_start,
-                'old_end': old_end,
-                'new_start': new_start,
-                'new_end': new_end,
-                'is_commented': False  # 初始时假设没有评论
-            })
-        
-        i += 1
-    
-    return segments
 
 
 def count_diff_need_check(jsonl_file_path):
@@ -338,22 +231,10 @@ def count_diff_need_check(jsonl_file_path):
                 continue
             try:
                 data = json.loads(line)
-                # 获取diff_comment_num和commit_count的值
-                diff_comment_num = data.get('diff_comment_num', 0)
-                commit_count = data.get('commit_count', 0)
-                # 如果user已注销，那么就用Commit中的user_id
-                if data.get('user') is None:
-                    pr_user_id = None
-                else:
-                    pr_user_id = data.get('user').get('id')
                 pr_files = data.get('pr_files')
-
-                pr_file_len = len(pr_files)
                 pr_number = data.get('number')
                 # 获取diff_comments中最早的评论时间
                 diff_comments = data.get('diff_comments')
-                # 从pr_commits中获取最晚的提交时间
-                pr_all_commits = data.get('pr_commits', [])
                 # 这里统计一下每个file对应的diff段
                 file_path_segments = []
                 for pr_file in pr_files:

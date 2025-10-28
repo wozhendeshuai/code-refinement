@@ -4,6 +4,10 @@ import time
 
 import requests
 
+from utils.code_file_check import is_code_file
+from utils.diff_utils import get_diff_segments
+from utils.json_utils import remove_url_fields
+
 
 def fetch_commit_compare_data(base, head):
     api_url = f"https://gitcode.com/api/v5/repos/{OWNER}/{REPO}/compare/{base}...{head}"
@@ -30,22 +34,6 @@ def save_code_refinement_data_to_file(pr_number, diff_comment, before_file, afte
         'before_file': before_file,
         'after_file': after_file
     }
-
-    # 删除所有以"url"结尾且值为"http"开头的键值对，递归处理嵌套结构
-    def remove_url_fields(obj):
-        if isinstance(obj, dict):
-            keys_to_remove = []
-            for key, value in obj.items():
-                if isinstance(key, str) and key.endswith('url') and isinstance(value, str) and value.startswith('http'):
-                    keys_to_remove.append(key)
-                else:
-                    remove_url_fields(value)
-            for key in keys_to_remove:
-                del obj[key]
-        elif isinstance(obj, list):
-            for item in obj:
-                remove_url_fields(item)
-
     remove_url_fields(detailed_pr_data)
     # 线程安全地写入JSONL
     try:
@@ -66,116 +54,6 @@ def save_code_refinement_data_to_file(pr_number, diff_comment, before_file, afte
         return False
 
 
-# 判断文件是否是一个代码文件
-def is_code_file(file_path):
-    # 常见的代码文件扩展名
-    code_extensions = {
-        '.cpp', '.c', '.cc', '.h', '.hpp',
-        '.xml', '.ets', '.js', '.ts', '.mjs', '.rs', '.css', '.html',
-        '.py',
-        '.gn', '.gni',
-        '.rc', '.idl',
-        '.java',
-        '.go', '.rb', '.php', '.sql', '.swift',
-        '.kt', '.kts', '.scala', '.cs', '.cxx', '.hxx', '.m', '.mm'
-    }
-
-    # 常见的配置文件扩展名
-    config_extensions = {
-        '.conf', '.config', '.ini', '.properties', '.cfg', '.toml', '.env', '.yaml', '.yml'
-    }
-
-    # 常见的非代码文件扩展名（文档、资源、二进制等）
-    non_code_extensions = {
-        '.txt', '.log', '.md', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.svg', '.webp',
-        '.zip', '.tar', '.gz', '.rar', '.7z',
-        '.exe', '.dll', '.so', '.dylib', '.bin',
-        '.cer', '.crt', '.pem', '.key', '.p12', '.pfx',
-        '.gitignore', '.gitattributes', '.lock', '.sum',
-        '.license', '.LICENSE', '.notice', '.NOTICE'
-    }
-
-    # 获取文件扩展名
-    _, ext = os.path.splitext(file_path.lower())
-
-    # 移除扩展名中的点号（如果有）
-    ext = ext.lstrip('.')
-
-    # 特殊处理没有扩展名的文件
-    if not ext:
-        # 检查是否为特定的配置文件名（无扩展名）
-        return False
-
-    # 如果是明确的代码扩展名
-    if '.' + ext in code_extensions:
-        return True
-
-    # 如果是明确的配置扩展名
-    if '.' + ext in config_extensions:
-        return False
-
-    # 如果是明确的非代码扩展名
-    if '.' + ext in non_code_extensions:
-        return False
-
-    # 对于未知扩展名，默认认为不是代码文件
-    return False
-
-
-def get_diff_segments(diff_text):
-    """
-    根据diff的具体内容，将其拆分成不同的段落，给出段落的起始和结束行号，包括old_start，old_end，new_start，new_end
-    """
-    if not diff_text:
-        return []
-
-    segments = []
-    lines = diff_text.split('\n')
-
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        # 查找 @@ -old_start,old_count +new_start,new_count @@ 格式的行
-        if line.startswith('@@'):
-            # 解析 hunk 头部信息
-            header_parts = line.split('@@')[1].strip()
-            parts = header_parts.split()
-            if len(parts) < 2 or header_parts.startswith('-') is False:
-                i += 1
-                continue
-            elif len(parts) > 2:
-                header_parts = parts[0] + ' ' + parts[1]
-            else:
-                old_part, new_part = header_parts.split()
-
-            # 提取 old_start 和 old_count
-            old_info = old_part[1:].split(',')
-
-            old_start = int(old_info[0])
-            old_count = int(old_info[1]) if len(old_info) > 1 and old_info[1] != '' else 1
-
-            # 提取 new_start 和 new_count
-            new_info = new_part[1:].split(',')
-            new_start = int(new_info[0]) if new_info[0] else -1
-            new_count = int(new_info[1]) if len(new_info) > 1 and new_info[1] != '' else -1
-
-            # 计算结束行号
-            old_end = old_start + old_count - 1 if old_count > 0 else old_start
-            new_end = new_start + new_count - 1 if new_count > 0 else new_start
-
-            # 添加段落信息
-            segments.append({
-                'old_start': old_start,
-                'old_end': old_end,
-                'new_start': new_start,
-                'new_end': new_end,
-                'is_commented': False  # 初始时假设没有评论
-            })
-
-        i += 1
-
-    return segments
 
 
 def count_diff_need_refinement(jsonl_file_path):

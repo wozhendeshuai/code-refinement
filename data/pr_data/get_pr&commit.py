@@ -295,7 +295,6 @@ class GitCodePRAnalyzer:
     def save_pr_detailed_data(self, pr_data, processed_files, pr_commits_data, commit_count, commit_shas, diff_comments):
         """保存PR的详细数据，包括文件内容和提交信息，确保每行可JSON化"""
         pr_number = pr_data.get('number')
-        pr_id = pr_data.get('id')
 
         # 构建完整的PR详细数据
         detailed_pr_data = {
