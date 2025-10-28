@@ -7,37 +7,6 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# --- 配置 ---
-# 替换为你要查询的仓库所有者和仓库名
-OWNER = "openharmony"
-REPO = "build"
-
-# GitCode API基础URL (根据文档)
-API_BASE_URL = "https://gitcode.com/api/v5"
-File_CONTENT_URL="https://raw.gitcode.com"
-
-HEADERS = {
-    'Accept': 'application/json',
-    'PRIVATE-TOKEN': 'ZHntmapyoy-tm62QF71DMPkZ'
-}
-
-# 输入文件：已有的PR信息JSONL文件
-INPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_prs.jsonl"
-
-# 输出文件名
-OUTPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
-
-# 断点续传记录文件名
-PROCESSED_PR_NUMBERS_FILE = f"{REPO}/{OWNER}_{REPO}_processed_pr_commit_comment_numbers.txt"
-
-# API请求参数
-PER_PAGE = 100  # 每页数量，最大100 (根据文档)
-
-# 并发设置
-MAX_WORKERS = 3  # 并发线程数，避免触发速率限制
-MAX_RETRIES = 3  # API请求重试次数
-BACKOFF_FACTOR = 1  # 退避因子
-
 
 # --- 配置结束 ---
 
@@ -544,8 +513,53 @@ class GitCodePRAnalyzer:
 
 
 if __name__ == "__main__":
-    analyzer = GitCodePRAnalyzer()
-    analyzer.main()
+    REPO_List=[
+        "account_os_account",
+        "arkui_ace_engine",
+        "build",
+        "communication_wifi",
+        "developtools_ace_ets2bundle",
+        "multimedia_audio_framework",
+        "web_webview",
+        "xts_acts"
+    ]
+    for repo in REPO_List:
+        print("======================================================")
+        print(repo)
+        # --- 配置 ---
+        print("======================================================")
+        # 替换为你要查询的仓库所有者和仓库名
+        OWNER = "openharmony"
+        REPO = repo
+
+        # GitCode API基础URL (根据文档)
+        API_BASE_URL = "https://gitcode.com/api/v5"
+        File_CONTENT_URL = "https://raw.gitcode.com"
+
+        HEADERS = {
+            'Accept': 'application/json',
+            'PRIVATE-TOKEN': 'ZHntmapyoy-tm62QF71DMPkZ'
+        }
+
+        # 输入文件：已有的PR信息JSONL文件
+        INPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_prs.jsonl"
+
+        # 输出文件名
+        OUTPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
+
+        # 断点续传记录文件名
+        PROCESSED_PR_NUMBERS_FILE = f"{REPO}/{OWNER}_{REPO}_processed_pr_commit_comment_numbers.txt"
+
+        # API请求参数
+        PER_PAGE = 100  # 每页数量，最大100 (根据文档)
+
+        # 并发设置
+        MAX_WORKERS = 3  # 并发线程数，避免触发速率限制
+        MAX_RETRIES = 3  # API请求重试次数
+        BACKOFF_FACTOR = 1  # 退避因子
+
+        analyzer = GitCodePRAnalyzer()
+        analyzer.main()
 
 
 

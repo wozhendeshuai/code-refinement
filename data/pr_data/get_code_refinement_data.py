@@ -144,18 +144,21 @@ def get_diff_segments(diff_text):
             if len(parts) < 2 or header_parts.startswith('-') is False:
                 i += 1
                 continue
-            old_part, new_part = header_parts.split()
+            elif len(parts) > 2:
+                header_parts = parts[0] + ' ' + parts[1]
+            else:
+                old_part, new_part = header_parts.split()
 
             # 提取 old_start 和 old_count
             old_info = old_part[1:].split(',')
 
             old_start = int(old_info[0])
-            old_count = int(old_info[1]) if len(old_info) > 1 else 1
+            old_count = int(old_info[1]) if len(old_info) > 1 and old_info[1] != '' else 1
 
             # 提取 new_start 和 new_count
             new_info = new_part[1:].split(',')
-            new_start = int(new_info[0])
-            new_count = int(new_info[1]) if len(new_info) > 1 else 1
+            new_start = int(new_info[0]) if new_info[0] else -1
+            new_count = int(new_info[1]) if len(new_info) > 1 and new_info[1] != '' else -1
 
             # 计算结束行号
             old_end = old_start + old_count - 1 if old_count > 0 else old_start
@@ -179,39 +182,50 @@ def count_diff_need_refinement(jsonl_file_path):
     """
     分别统计diff_comment_num>=threshold、commit_count>=threshold的数量，以及两者都>=threshold的数量
     """
+    pr_number_set = set()
+    # 打开OUTPUT_JSONL_FILE文件，然后看一下当前处理到哪里了，保存最后一行的pr_number，以便继续处理
+    with open(OUTPUT_JSONL_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            last_pr_number = json.loads(line).get('pr_number')
+            pr_number_set.add(last_pr_number)
+    print(f"上次处理到的pr_number是: {last_pr_number}")
     if not os.path.exists(jsonl_file_path):
         print(f"文件 {jsonl_file_path} 不存在")
         return 0, 0, 0
     # 情况1： 在diff_comments中，有评论时间早于最后一次提交时间
-    comment_in_diff_count = 0
 
     total_lines = 0
-
-    pr_number_set = set()
 
     refinement_count = 0
 
     print(f"正在读取文件: {jsonl_file_path}")
+    has_attach_last_pr_number = False
+    # 获取文件总行数用于进度显示
+    total_lines_in_file = sum(1 for _ in open(jsonl_file_path, 'r', encoding='utf-8'))
+    print(f"文件 {jsonl_file_path} 总共有 {total_lines_in_file} 行数据")
 
     with open(jsonl_file_path, 'r', encoding='utf-8') as f:
         for line_num, line in enumerate(f, 1):
+
             line = line.strip()
             if not line:
                 continue
             try:
                 data = json.loads(line)
-                # 获取diff_comment_num和commit_count的值
-                diff_comment_num = data.get('diff_comment_num', 0)
-                commit_count = data.get('commit_count', 0)
-                # 如果user已注销，那么就用Commit中的user_id
-                if data.get('user') is None:
-                    pr_user_id = None
-                else:
-                    pr_user_id = data.get('user').get('id')
                 pr_files = data.get('pr_files')
-
-                pr_file_len = len(pr_files)
                 pr_number = data.get('number')
+                # 如果当前没到处理过的最后一个pr_number，那么就跳过
+                if pr_number == last_pr_number:
+                    print(f"到达上次处理中断点，第 {line_num} 行，总共 {total_lines_in_file} 行，"
+                          f"pr_number是:{pr_number},进度: {line_num / total_lines_in_file}%")
+                    has_attach_last_pr_number = True
+                    continue
+                if not has_attach_last_pr_number:
+                    continue
+                print(f"正在处理第 {line_num} 行，总共 {total_lines_in_file} 行，pr_number是:{pr_number},进度: {line_num / total_lines_in_file}%")
                 # 获取diff_comments中最早的评论时间
                 diff_comments = data.get('diff_comments')
                 commit_shas = data.get('commit_shas')
@@ -255,7 +269,6 @@ def count_diff_need_refinement(jsonl_file_path):
                                                 'new_end'):
                                                 if file_diff_segment.get('is_commented') is False:
                                                     file_diff_segment['is_commented'] = True
-                                                    pr_number_set.add(pr_number)
                                                     commit_base_sha = commit_shas[0]
                                                     commit_before_comment_time_sha = None
                                                     commit_after_comment_time_sha = commit_shas[-1]
@@ -275,6 +288,8 @@ def count_diff_need_refinement(jsonl_file_path):
                                                     else:
                                                         before_diff = fetch_commit_compare_data(commit_base_sha,
                                                                                                 commit_before_comment_time_sha)
+                                                        if before_diff is None:
+                                                            continue
                                                         before_files = before_diff.get('files')
                                                         before_file = None
                                                         has_before_file_comment_position = False
@@ -288,7 +303,7 @@ def count_diff_need_refinement(jsonl_file_path):
                                                                 for temp_patch_segement in temp_file_patch:
                                                                     if temp_patch_segement.get(
                                                                             'new_start') <= start_new_line <= temp_patch_segement.get(
-                                                                            'new_end') and temp_patch_segement.get(
+                                                                        'new_end') and temp_patch_segement.get(
                                                                         'new_start') <= end_new_line <= temp_patch_segement.get(
                                                                         'new_end'):
                                                                         has_before_file_comment_position = True
@@ -299,6 +314,8 @@ def count_diff_need_refinement(jsonl_file_path):
                                                         after_diff = fetch_commit_compare_data(
                                                             commit_before_comment_time_sha,
                                                             commit_after_comment_time_sha)
+                                                        if after_diff is None:
+                                                            continue
                                                         after_files = after_diff.get('files')
                                                         after_file = None
                                                         has_after_file_comment_position = False
@@ -321,9 +338,12 @@ def count_diff_need_refinement(jsonl_file_path):
                                                                 break
                                                         # 如果都满足，那么就说明这个是一个有效数据，接下来就统计并保存一下
                                                         if has_after_file_comment_position and has_before_file_comment_position:
-                                                            print(f'line {line_num}')
-                                                            save_code_refinement_data_to_file(pr_number,diff_comment, before_file,
+                                                            print(
+                                                                f'line {line_num},pr_number:{pr_number}，找到一个有效数据')
+                                                            save_code_refinement_data_to_file(pr_number, diff_comment,
+                                                                                              before_file,
                                                                                               after_file)
+                                                            pr_number_set.add(pr_number)
                                                             refinement_count += 1
                                                     break
                                                 else:
@@ -345,7 +365,6 @@ def count_diff_need_refinement(jsonl_file_path):
                                                 'old_end'):
                                                 if file_diff_segment.get('is_commented') is False:
                                                     file_diff_segment['is_commented'] = True
-                                                    pr_number_set.add(pr_number)
                                                     commit_base_sha = commit_shas[0]
                                                     commit_before_comment_time_sha = None
                                                     commit_after_comment_time_sha = commit_shas[-1]
@@ -411,10 +430,12 @@ def count_diff_need_refinement(jsonl_file_path):
                                                                 break
                                                         # 如果都满足，那么就说明这个是一个有效数据，接下来就统计并保存一下
                                                         if has_after_file_comment_position and has_before_file_comment_position:
-                                                            print(f'line {line_num}')
+                                                            print(
+                                                                f'line {line_num},pr_number:{pr_number}，找到一个有效数据')
                                                             save_code_refinement_data_to_file(pr_number, diff_comment,
                                                                                               before_file,
                                                                                               after_file)
+                                                            pr_number_set.add(pr_number)
                                                             refinement_count += 1
                                                     break
                                                 else:
@@ -426,14 +447,14 @@ def count_diff_need_refinement(jsonl_file_path):
                 print(f"第 {line_num} 行 JSON 解析错误: {e}")
 
     print("-" * 70)
-    print(f"总共处理了 {total_lines} 行数据")
-    print(
-        f"其中comment_in_diff_count 的数据条数: {comment_in_diff_count} 涉及的pr_number数量: {len(pr_number_set)},refinement_count:{refinement_count}")
+    # 获取文件总行数用于进度显示
+    total_output_lines_in_file = sum(1 for _ in open(OUTPUT_JSONL_FILE, 'r', encoding='utf-8'))
+    print( f"其中涉及的pr_number数量: {total_lines_in_file},涉及的PR数量：{len(pr_number_set)}，有效的refinement_count:{total_output_lines_in_file}")
 
 
 # 根据原始代码中的变量定义
 OWNER = "openharmony"
-REPO = "web_webview"
+REPO = "account_os_account"
 PR_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
-OUTPUT_JSONL_FILE= f"{REPO}/{OWNER}_{REPO}_pr_refinement_code.jsonl"
+OUTPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_refinement_code.jsonl"
 count_diff_need_refinement(PR_JSONL_FILE)
