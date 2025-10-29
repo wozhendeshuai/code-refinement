@@ -254,7 +254,13 @@ def analyze_pr_commit_and_file_statistics(jsonl_file):
 
 REPO_List = [
     "account_os_account",
-    "web_webview"
+    # "arkui_ace_engine",
+    # "build",
+    "communication_wifi",
+    "developtools_ace_ets2bundle",
+    "multimedia_audio_framework",
+    "web_webview",
+    # "xts_acts"
 ]
 for repo in REPO_List:
     print("========"*20)
@@ -264,15 +270,6 @@ for repo in REPO_List:
     # 替换为你要查询的仓库所有者和仓库名
     OWNER = "openharmony"
     REPO = repo
-
-    # GitCode API基础URL (根据文档)
-    API_BASE_URL = "https://gitcode.com/api/v5"
-    File_CONTENT_URL = "https://raw.gitcode.com"
-
-    HEADERS = {
-        'Accept': 'application/json',
-        'PRIVATE-TOKEN': 'ZHntmapyoy-tm62QF71DMPkZ'
-    }
 
     # 输出文件名
     PR_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_prs.jsonl"
