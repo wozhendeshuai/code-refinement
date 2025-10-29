@@ -54,22 +54,26 @@ def save_code_refinement_data_to_file(pr_number, diff_comment, before_file, afte
         return False
 
 
-
-
 def count_diff_need_refinement(jsonl_file_path):
     """
     分别统计diff_comment_num>=threshold、commit_count>=threshold的数量，以及两者都>=threshold的数量
     """
     pr_number_set = set()
     # 打开OUTPUT_JSONL_FILE文件，然后看一下当前处理到哪里了，保存最后一行的pr_number，以便继续处理
-    with open(OUTPUT_JSONL_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            last_pr_number = json.loads(line).get('pr_number')
-            pr_number_set.add(last_pr_number)
-    print(f"上次处理到的pr_number是: {last_pr_number}")
+    if os.path.exists(OUTPUT_JSONL_FILE):
+        with open(OUTPUT_JSONL_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                last_pr_number = json.loads(line).get('pr_number')
+                pr_number_set.add(last_pr_number)
+        print(f"上次处理到的pr_number是: {last_pr_number}")
+    else:
+        print(f'文件 {OUTPUT_JSONL_FILE} 不存在，说明是第一次处理')
+        # 确保目录存在
+        os.makedirs(os.path.dirname(OUTPUT_JSONL_FILE), exist_ok=True)
+        last_pr_number = None
     if not os.path.exists(jsonl_file_path):
         print(f"文件 {jsonl_file_path} 不存在")
         return 0, 0, 0
@@ -96,14 +100,15 @@ def count_diff_need_refinement(jsonl_file_path):
                 pr_files = data.get('pr_files')
                 pr_number = data.get('number')
                 # 如果当前没到处理过的最后一个pr_number，那么就跳过
-                if pr_number == last_pr_number:
+                if last_pr_number is not None and pr_number == last_pr_number:
                     print(f"到达上次处理中断点，第 {line_num} 行，总共 {total_lines_in_file} 行，"
                           f"pr_number是:{pr_number},进度: {line_num / total_lines_in_file}%")
                     has_attach_last_pr_number = True
                     continue
-                if not has_attach_last_pr_number:
+                if not has_attach_last_pr_number and last_pr_number is not None:
                     continue
-                print(f"正在处理第 {line_num} 行，总共 {total_lines_in_file} 行，pr_number是:{pr_number},进度: {line_num / total_lines_in_file}%")
+                print(
+                    f"正在处理第 {line_num} 行，总共 {total_lines_in_file} 行，pr_number是:{pr_number},进度: {line_num / total_lines_in_file}%")
                 # 获取diff_comments中最早的评论时间
                 diff_comments = data.get('diff_comments')
                 commit_shas = data.get('commit_shas')
@@ -327,12 +332,23 @@ def count_diff_need_refinement(jsonl_file_path):
     print("-" * 70)
     # 获取文件总行数用于进度显示
     total_output_lines_in_file = sum(1 for _ in open(OUTPUT_JSONL_FILE, 'r', encoding='utf-8'))
-    print( f"其中涉及的pr_number数量: {total_lines_in_file},涉及的PR数量：{len(pr_number_set)}，有效的refinement_count:{total_output_lines_in_file}")
+    print(
+        f"其中涉及的pr_number数量: {total_lines_in_file},涉及的PR数量：{len(pr_number_set)}，有效的refinement_count:{total_output_lines_in_file}")
 
 
 # 根据原始代码中的变量定义
 OWNER = "openharmony"
-REPO = "account_os_account"
-PR_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
-OUTPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_refinement_code.jsonl"
-count_diff_need_refinement(PR_JSONL_FILE)
+REPO_list = [
+    "account_os_account",
+    # "arkui_ace_engine",
+    # "build",
+    "communication_wifi",
+    "developtools_ace_ets2bundle",
+    "multimedia_audio_framework",
+    "web_webview",
+    # "xts_acts"
+]
+for REPO in REPO_list:
+    PR_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
+    OUTPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_refinement_code.jsonl"
+    count_diff_need_refinement(PR_JSONL_FILE)

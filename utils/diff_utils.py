@@ -21,11 +21,12 @@ def get_diff_segments(diff_text):
                 continue
             elif len(parts) > 2:
                 header_parts = parts[0] + ' ' + parts[1]
+                old_part, new_part = header_parts.split()
             else:
                 old_part, new_part = header_parts.split()
 
             # 提取 old_start 和 old_count
-            old_info = old_part[1:].split(',')
+            old_info = old_part[1:].split(',') if len(old_part) > 1 else ['-1', '-1']
 
             old_start = int(old_info[0])
             old_count = int(old_info[1]) if len(old_info) > 1 and old_info[1] != '' else 1
