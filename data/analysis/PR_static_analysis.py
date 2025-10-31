@@ -77,7 +77,6 @@ def analyze_pr_and_issue_data(jsonl_file, issue_excel_file):
                     elif pr_author_login and pr_author_login == issue_author:
                         same_author_count += 1
 
-
     print(f"\n4. Issue作者与PR作者相同的比例:")
     if comparison_count > 0:
         same_author_percentage = (same_author_count / comparison_count) * 100
@@ -93,15 +92,16 @@ def analyze_pr_refinement_data(jsonl_file, refinement_jsonl_file):
     分析PR和PRRefinement数据，统计相关信息
     """
     # 读取所有PR数据
-    all_pr_data = []
+    total_pr_count = 0
     try:
         with open(jsonl_file, 'r', encoding='utf-8') as f:
             for line in f:
-                all_pr_data.append(json.loads(line.strip()))
-        print(f"成功读取 {len(all_pr_data)} 个PR数据")
+                json.loads(line.strip())
+                total_pr_count += 1
+        print(f"成功读取 {total_pr_count} 个PR数据")
     except Exception as e:
         print(f"读取PR数据失败: {e}")
-        return
+        return 0, 0
 
     # 读取PRRefinement数据
     refinement_data = []
@@ -115,7 +115,6 @@ def analyze_pr_refinement_data(jsonl_file, refinement_jsonl_file):
         return
 
     # 统计PR数量
-    total_pr_count = len(all_pr_data)
 
     # 统计PRRefinement涉及的PR数量（去重）
     pr_numbers_in_refinement = set()
@@ -142,6 +141,7 @@ def analyze_pr_refinement_data(jsonl_file, refinement_jsonl_file):
     if pr_refinement_count > 0:
         avg_refinement_per_pr = refinement_gate_count / pr_refinement_count
         print(f"  平均每个涉及Refinement的PR有 {avg_refinement_per_pr:.2f} 个Refinement")
+    return total_pr_count, refinement_gate_count
 
 
 def analyze_pr_commit_and_file_statistics(jsonl_file):
@@ -252,34 +252,48 @@ def analyze_pr_commit_and_file_statistics(jsonl_file):
     print(f"  每个PR平均代码文件数量: {avg_code_files:.2f}")
     print(f"  每个PR平均评论数量: {avg_comments:.2f}")
 
+
 REPO_List = [
     "account_os_account",
     # "arkui_ace_engine",
-    # "build",
+    "build",
     "communication_wifi",
     "developtools_ace_ets2bundle",
     "multimedia_audio_framework",
     "web_webview",
     # "xts_acts"
 ]
+pr_count = 0
+refinement_count = 0
+refinement_count_dict = {}
+
 for repo in REPO_List:
-    print("========"*20)
+    print("========" * 20)
     print(repo)
     # --- 配置 ---
-    print("========"*20)
+    print("========" * 20)
     # 替换为你要查询的仓库所有者和仓库名
     OWNER = "openharmony"
     REPO = repo
 
     # 输出文件名
-    PR_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_prs.jsonl"
-    PR_ISSUE_EXCEL_FILE = f"{REPO}/{OWNER}_{REPO}_issues_linked_to_prs.xlsx"
+    PR_JSONL_FILE = f"../pr_data/{REPO}/{OWNER}_{REPO}_prs.jsonl"
+    PR_ISSUE_EXCEL_FILE = f"../pr_data/{REPO}/{OWNER}_{REPO}_issues_linked_to_prs.xlsx"
     analyze_pr_and_issue_data(PR_JSONL_FILE, PR_ISSUE_EXCEL_FILE)
 
     # 输出文件名
-    PR_COMMIT_COMMENT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
+    PR_COMMIT_COMMENT_JSONL_FILE = f"../pr_data/{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
     analyze_pr_commit_and_file_statistics(PR_COMMIT_COMMENT_JSONL_FILE)
 
-
-    PR_Refinement_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_refinement_code.jsonl"
-    analyze_pr_refinement_data(PR_JSONL_FILE, PR_Refinement_JSONL_FILE)
+    PR_Refinement_JSONL_FILE = f"../pr_data/{REPO}/{OWNER}_{REPO}_pr_refinement_code.jsonl"
+    total_pr_count, refinement_count_temp = analyze_pr_refinement_data(PR_JSONL_FILE, PR_Refinement_JSONL_FILE)
+    pr_count += total_pr_count
+    refinement_count += refinement_count_temp
+    refinement_count_dict[repo] = {}
+    refinement_count_dict[repo]['total_pr_count'] = total_pr_count
+    refinement_count_dict[repo]['refinement_count'] = refinement_count_temp
+    refinement_count_dict[repo]['refinement_percentage'] = (refinement_count_temp / total_pr_count) * 100
+print("pr_count:", pr_count)
+print("refinement_count:", refinement_count)
+print("refinement_percentage:", (refinement_count / pr_count) * 100 if pr_count > 0 else 0)
+print("refinement_count_dict:", refinement_count_dict)

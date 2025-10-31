@@ -279,10 +279,10 @@ def count_diff_need_refinement(jsonl_file_path):
                                                                     temp_file.get('patch'))
                                                                 for temp_patch_segement in temp_file_patch:
                                                                     if temp_patch_segement.get(
-                                                                            'new_start') <= start_new_line <= temp_patch_segement.get(
-                                                                        'new_end') and temp_patch_segement.get(
-                                                                        'new_start') <= end_new_line <= temp_patch_segement.get(
-                                                                        'new_end'):
+                                                                            'old_start') <= start_old_line <= temp_patch_segement.get(
+                                                                        'old_end') and temp_patch_segement.get(
+                                                                        'old_start') <= end_old_line <= temp_patch_segement.get(
+                                                                        'old_end'):
                                                                         has_before_file_comment_position = True
                                                                         break
                                                                 time.sleep(4)
@@ -303,10 +303,10 @@ def count_diff_need_refinement(jsonl_file_path):
                                                                     temp_file.get('patch'))
                                                                 for temp_patch_segement in temp_file_patch:
                                                                     if temp_patch_segement.get(
-                                                                            'new_start') <= start_new_line <= temp_patch_segement.get(
-                                                                        'new_end') and temp_patch_segement.get(
-                                                                        'new_start') <= end_new_line <= temp_patch_segement.get(
-                                                                        'new_end'):
+                                                                            'old_start') <= start_old_line <= temp_patch_segement.get(
+                                                                        'old_end') and temp_patch_segement.get(
+                                                                        'old_start') <= end_old_line <= temp_patch_segement.get(
+                                                                        'old_end'):
                                                                         has_after_file_comment_position = True
                                                                         break
                                                                 time.sleep(4)
@@ -340,8 +340,8 @@ def count_diff_need_refinement(jsonl_file_path):
 OWNER = "openharmony"
 REPO_list = [
     "account_os_account",
-    # "arkui_ace_engine",
-    # "build",
+    "arkui_ace_engine",
+    "build",
     "communication_wifi",
     "developtools_ace_ets2bundle",
     "multimedia_audio_framework",

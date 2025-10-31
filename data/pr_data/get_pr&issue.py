@@ -5,30 +5,7 @@ import time
 import pandas as pd
 import requests
 
-# --- 配置 ---
-# 替换为你要查询的仓库所有者和仓库名
-OWNER = "openharmony"
-REPO = "xts_acts"
 
-# GitCode API基础URL (根据文档)
-API_BASE_URL = "https://gitcode.com/api/v5"
-
-HEADERS = {
-    'Accept': 'application/json',
-    'PRIVATE-TOKEN': 'r34uS2yEqhNMTBwmAN5ZkQTa'
-}
-
-# 输出文件名
-OUTPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_prs.jsonl"
-OUTPUT_PR_EXCEL_FILE = f"{REPO}/{OWNER}_{REPO}_prs_summary.xlsx"
-OUTPUT_ISSUE_EXCEL_FILE = f"{REPO}/{OWNER}_{REPO}_issues_linked_to_prs.xlsx"
-
-# 断点续传记录文件名
-FULLY_PROCESSED_IDS_FILE = f"{REPO}/{OWNER}_{REPO}_fully_processed_pr_ids.txt"  # 所有步骤完成的PR ID
-PARTIALLY_PROCESSED_IDS_FILE = f"{REPO}/{OWNER}_{REPO}_partially_processed_pr_ids.txt"  # PR数据已处理，Issues待处理的PR ID
-
-# API请求参数
-PER_PAGE = 100  # 每页数量，最大100 (根据文档)
 
 
 # --- 配置结束 ---
@@ -422,4 +399,28 @@ def main():
 
 
 if __name__ == "__main__":
+    # --- 配置 ---
+    # 替换为你要查询的仓库所有者和仓库名
+    OWNER = "openharmony"
+    REPO = "kernel_linux_5.10"
+
+    # GitCode API基础URL (根据文档)
+    API_BASE_URL = "https://gitcode.com/api/v5"
+
+    HEADERS = {
+        'Accept': 'application/json',
+        'PRIVATE-TOKEN': 'ZHntmapyoy-tm62QF71DMPkZ'
+    }
+
+    # 输出文件名
+    OUTPUT_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_prs.jsonl"
+    OUTPUT_PR_EXCEL_FILE = f"{REPO}/{OWNER}_{REPO}_prs_summary.xlsx"
+    OUTPUT_ISSUE_EXCEL_FILE = f"{REPO}/{OWNER}_{REPO}_issues_linked_to_prs.xlsx"
+
+    # 断点续传记录文件名
+    FULLY_PROCESSED_IDS_FILE = f"{REPO}/{OWNER}_{REPO}_fully_processed_pr_ids.txt"  # 所有步骤完成的PR ID
+    PARTIALLY_PROCESSED_IDS_FILE = f"{REPO}/{OWNER}_{REPO}_partially_processed_pr_ids.txt"  # PR数据已处理，Issues待处理的PR ID
+
+    # API请求参数
+    PER_PAGE = 100  # 每页数量，最大100 (根据文档)
     main()
