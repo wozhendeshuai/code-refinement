@@ -516,11 +516,12 @@ if __name__ == "__main__":
         "account_os_account",
         "arkui_ace_engine",
         "build",
-        # "communication_wifi",
-        # "developtools_ace_ets2bundle",
-        # "multimedia_audio_framework",
-        # "web_webview",
-        # "xts_acts"
+        "communication_wifi",
+        "developtools_ace_ets2bundle",
+        "multimedia_audio_framework",
+        "web_webview",
+        "xts_acts",
+        "kernel_linux_5.10"
     ]
     for repo in REPO_List:
         print("======================================================")

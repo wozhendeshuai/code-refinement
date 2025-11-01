@@ -346,7 +346,8 @@ REPO_list = [
     "developtools_ace_ets2bundle",
     "multimedia_audio_framework",
     "web_webview",
-    # "xts_acts"
+    "xts_acts",
+    # "kernel_linux_5.10"
 ]
 for REPO in REPO_list:
     PR_JSONL_FILE = f"{REPO}/{OWNER}_{REPO}_pr_commit_comment_details_with_files.jsonl"
